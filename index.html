@@ -16,7 +16,10 @@
     <div class="wrap header-inner">
       <div class="brand" id="brand"></div>
       <nav class="nav" id="nav" aria-label="Main"></nav>
-      <button class="btn btn-small" id="present-toggle" aria-pressed="false" title="Shortcut: P">Presenter notes</button>
+      <div class="header-tools">
+        <button class="btn btn-small" id="bag-toggle" aria-haspopup="dialog">Bag <span class="bag-count" id="bag-count">0</span></button>
+        <button class="btn btn-small" id="present-toggle" aria-pressed="false" title="Shortcut: P">Presenter notes</button>
+      </div>
     </div>
   </header>
 
@@ -29,9 +32,23 @@
     </div>
   </footer>
 
+  <dialog class="bag" id="bag" aria-labelledby="bag-title">
+    <div class="bag-head">
+      <h2 id="bag-title">Your bag</h2>
+      <button class="btn btn-small" data-close>Close</button>
+    </div>
+    <ul class="bag-items" id="bag-items"></ul>
+    <div class="bag-foot">
+      <p class="bag-total"><span>Subtotal</span> <strong id="bag-total">$0.00</strong></p>
+      <p class="muted" id="bag-ship"></p>
+      <button class="btn btn-primary" id="bag-checkout">Check out</button>
+    </div>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="assets/js/content.js"></script>
+  <script src="assets/js/art.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
 </html>

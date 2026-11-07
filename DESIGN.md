@@ -92,10 +92,27 @@ Each is a `type` in `assets/js/content.js`, drawn by a function in `app.js` (`co
 | **stats** | `<dl>`; each stat has a 3px `--leaf` **left** border, big serif `--leaf-deep` number above a small muted label. Source line below in `--t-sm`. |
 | **steps** | Numbered columns; the number is a 2.4rem `--leaf` circle with serif numeral in `--on-leaf`, above an h3 and muted text. |
 | **placeholder** | The hatched empty frame with a text label. |
+| **cards** | Photo cards with no border: 4:3 photo (6px radius), serif h3 underlined in the accent rotation colour, muted text. The whole card is the link. |
+| **cast** | Character cards: 120px round character art beside name, "kind, since year" line, blurb, outline tag pills and a shop link. Compact: centred row of round portraits with serif names. |
+| **books** | Grid of 2:3 SVG covers (inset spine shadow like the shelf spines), optional badge pill, serif title, muted author and format, serif price with a small outline "Add to bag" button. Optional filter chips above. |
+| **spotlight** | Two columns: photo (4:3, 6px radius) or scene art beside a large lede, an optional host (60px round avatar, name, role), leaf-bullet points and pill buttons. `reverse` swaps sides. |
+| **banner** | Surface card with a 6px `--sun` left border, serif h2, muted lede, buttons, and art or a 16:10 photo on the right. |
+| **videos** | 16:9 SVG thumbnails with a dark duration tag, title and muted kind. Hover draws a `--sun` inner outline. |
+| **timeline** | A 3px `--leaf` rule with ring markers; the last (future) year is a solid `--sun` dot. Serif years in `--leaf-deep`. |
+| **logos** | Monochrome placeholder logos in `currentColor` (`--ink-soft`, `--ink` on hover) above a thin rule, with a small type label. |
+| **faq** | Native details/summary rows between hairlines, serif plus/minus in `--leaf-deep`. |
+| **subnav, chips** | Outline pills (1.5px `--line`); pressed chips fill with `--ink` and `--paper` text. |
+
 
 Buttons (`.btn`): pill, 1.5px `--ink` border, transparent fill, 500 weight; hover fills `--sun-wash`. `.btn-primary` is solid `--leaf` with `--on-leaf` text, hover `--leaf-deep`. `.btn-small` for the header toggle; when pressed it turns solid `--sun` with dark text.
 
 Nav links: `--ink-soft`, no underline; the current page is `--ink` with a 2px `--leaf` bottom border.
+
+### Artwork (`assets/js/art.js`)
+
+Characters, hosts, covers, thumbnails, logos and scenes are flat SVG with no outlines except where an object needs one (the open book, library card, globe). Character and cover colours are fixed, like the spines, so they read the same in dark mode; character backgrounds are pastel washes of the four accents (`#DCE8C6`, `#FBE3A6`, `#D6EAF0`, `#F4D2DC`). Covers put the title at the top and the character in a circle below, except novels and fashion, where a motif fills the top and the title sits on a solid band at the bottom. Logos use `currentColor` so they follow the theme.
+
+**Bag:** a right-hand `<dialog>` drawer on `--paper` with a `--line` left border and a dimmed backdrop.
 
 ## 6. Illustration: the willow
 
@@ -142,6 +159,8 @@ Short, warm, plain-English sentences; no exclamation marks; commas rather than d
 ```
 
 ## 10. Screenshot index
+
+These show the first version of the site, before the Lifestyle, Shop and Credits pages and the new components were added.
 
 All taken with the real fonts, reduced motion on. Desktop is 1440px wide; mobile is 390px at 2×.
 

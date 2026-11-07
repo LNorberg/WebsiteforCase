@@ -11,7 +11,10 @@ Read in this order:
 
 Working rules:
 
-- All copy lives in `assets/js/content.js`; `app.js` only renders. Add content as sections with an existing component `type` before inventing new components.
+- All copy lives in `assets/js/content.js`; `app.js` only renders and `art.js` only draws SVG artwork (characters, hosts, covers, thumbnails, logos, scenes). Add content as sections with an existing component `type` before inventing new components.
 - New CSS must use the tokens in `:root` (and add dark-mode values for any new token) rather than hard-coded colours.
 - No build step or dependencies. Keep it that way so it runs from `index.html` and on GitHub Pages.
 - Text starting with "TBD" is intentionally shown as a placeholder; don't delete it unless replacing it with real content.
+- Willow Tree, its characters, people, books and partners are fictional. Keep invented partner logos fictional; don't add real organisations' logos.
+- Photos are hotlinked from Wikimedia Commons; add any new photo to `photos` in content.js with its credit and licence so it appears on the Credits page.
+- Team names in the footer come from `team` in content.js.

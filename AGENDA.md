@@ -14,7 +14,7 @@ Last updated: 6 November 2026
 |---|---|
 | Slide deck (first-round submission) | Due today, Friday 6 November 2026 |
 | First-round presentation | Over Zoom, Monday 9 or Tuesday 10 November (sign-up sheet pending from organisers) |
-| Demo website | Framework built; content to be supplied by the team |
+| Demo website | Content filled in from the ideas doc and V. Wansink's notes; seven pages plus Credits |
 | Recommendation | Draft pillars agreed in notes (section 5); financials not yet sized |
 
 ## 2. The brief
@@ -126,19 +126,23 @@ The emerging thesis: Willow Tree's most valuable, under-used asset is its librar
 
 | Page | Demonstrates |
 |---|---|
-| Home | Segmented brand architecture (Kids, Lifestyle, Fashion) |
-| Willow Tree Kids | Character IP, read-along technical demo, short-form or TV pilot slot |
-| Story Club | Subscription box tiers (recurring revenue) |
-| Partners | Schools and book fairs, libraries, licensing, international |
-| The case | Market data and roadmap, for Q&A backup |
+| Home | Shortened hook, sector brands as photo links, characters, new books, Family Bundle, nostalgia timeline, videos, partners |
+| Willow Tree Kids | Character IP (five fictional characters), read-along demo, short-form pilot with celebrity guest reader concept, channel episodes, Young Writers Prize |
+| Lifestyle | Sections for Kitchen (cookbooks), Fiction (author breakdowns), Fashion (The Edit), Listen (audiobooks, AI narration), each with a fictional host |
+| Shop | Online storefront with genre and character filters, prices and a working bag; pre-loved and bulk school sales |
+| Story Club | Priced boxes split by type: Family Bundle, young readers, grown-ups, schools and libraries; FAQ |
+| Partners | Licensing, schools and book fairs, libraries, community organisations, international, authors; placeholder logos |
+| The case | Market data, key problems, pillar map, roadmap, risks (Q&A backup) |
+| Credits | Team names and photo credits (linked from the footer) |
 
 All copy lives in `assets/js/content.js`. Anything prefixed "TBD" renders as a visible placeholder so gaps are obvious before presenting.
 
 ### Open decisions
 
 - **Open:** which recommendation pillars the website should feature live during the 10 minutes, and at what point in the talk.
-- **Open:** character names, artwork, and story text (Willow Tree is fictional; the team can invent its own).
-- **Open:** subscription tier pricing and contents.
+- **Decided (draft):** characters are Wren Willowby, Barnaby Badger, Juniper and Moss, Marigold Mole, and Amara (new for 2027). Rename freely in content.js.
+- **Decided (draft):** Story Club pricing, e.g. Family Bundle $39.99/month, Sprout $15.99, Reader's Box $19.99, Classroom $149/term. Check against the deck financials.
+- **Open:** full list of team names for the footer (currently V. Wansink and L. Norberg).
 - **Open:** hosting (GitHub Pages is the simplest option) and whether the live demo or a recording is used on the day.
 
 ## 8. Resources
@@ -153,3 +157,4 @@ All copy lives in `assets/js/content.js`. Anything prefixed "TBD" renders as a v
 | Date | Change |
 |---|---|
 | 2026-11-06 | Agenda created from case brief, team notes, and IBISWorld report. Demo website framework added to the repo. |
+| 2026-11-06 | Website updated from V. Wansink's notes: fictional characters and hosts, celebrity guest reader in the pilot slot, Lifestyle and Shop pages, priced Story Club with the Family Bundle, placeholder partner logos, team names in the footer, more photos and clickable links, shorter home hook, content aligned with ideas.pdf. |

@@ -1,7 +1,8 @@
-/* Willow Tree demo site: renders pages from window.SITE (content.js). */
+/* Willow Tree demo site: renders pages from window.SITE (content.js), art from window.ART (art.js). */
 (() => {
   "use strict";
   const SITE = window.SITE;
+  const ART = window.ART;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -12,6 +13,38 @@
   const txt = v => isTbd(v) ? `<span class="tbd">${esc(v)}</span>` : esc(v);
   const link = (href, inner, cls = "") =>
     href && !isTbd(href) ? `<a class="${cls}" href="${esc(href)}">${inner}</a>` : inner;
+  const money = n => `$${Number(n).toFixed(2)}`;
+  const CATALOG = SITE.catalog || [];
+  const BOOK = Object.fromEntries(CATALOG.map(b => [b.id, b]));
+  const CHARS = SITE.characters || [];
+  const PARTNERS = SITE.partners || [];
+  const pick = (all, ids, key = "id") => ids === "all" || !ids ? all : ids.map(id => all.find(x => x[key] === id)).filter(Boolean);
+
+  /* A photo from SITE.photos, with an offline fallback handled in wireImages(). */
+  function photo(key, cls = "") {
+    const p = (SITE.photos || {})[key];
+    if (!p) return `<div class="img-fallback ${cls}"><span>${txt(`TBD: photo "${key}"`)}</span></div>`;
+    const pos = p.position ? ` style="object-position:${esc(p.position)}"` : "";
+    return `<img class="${cls}" src="${esc(p.src)}" alt="${esc(p.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer"${pos}
+      title="Photo: ${esc(p.credit)}, ${esc(p.license)}">`;
+  }
+  /* Art key from content: "char:wren" or a scene name ("box", "librarycard", ...). */
+  function art(key) {
+    if (!key) return "";
+    if (key.startsWith("char:")) {
+      const c = CHARS.find(x => x.id === key.slice(5));
+      return ART.character(key.slice(5), c ? c.color : "leaf");
+    }
+    return ART.scene(key);
+  }
+  const visual = s => s.photo ? photo(s.photo) : art(s.art);
+
+  function actions(list) {
+    if (!list || !list.length) return "";
+    return `<div class="actions">${list.map(a => a.href
+      ? `<a class="btn${a.primary ? " btn-primary" : ""}" href="${esc(a.href)}">${esc(a.label)}</a>`
+      : `<button class="btn${a.primary ? " btn-primary" : ""}" data-toast="${esc(a.demo || "Demo only.")}">${esc(a.label)}</button>`).join("")}</div>`;
+  }
 
   /* ---------- components ---------- */
   const C = {
@@ -36,14 +69,54 @@
           </article>`).join("")}
       </div>`,
 
+    /* Photo cards; the whole card is the link. */
+    cards: s => `
+      <div class="cards">
+        ${(s.items || []).map(i => `
+          <a class="card" href="${esc(i.href || "#")}">
+            <div class="card-img">${i.photo ? photo(i.photo) : art(i.art)}</div>
+            <h3>${txt(i.title)}</h3>
+            <p>${txt(i.text)}</p>
+          </a>`).join("")}
+      </div>`,
+
+    /* Book spines on a shelf; spines with href are links. */
     characters: s => `
       <ul class="shelf">
         ${(s.items || []).map(i => `
           <li class="spine spine-${esc(i.color || "leaf")}">
+            ${i.href ? `<a class="spine-link" href="${esc(i.href)}" aria-label="${esc(i.name)}"></a>` : ""}
             <span class="spine-title">${txt(i.name)}</span>
             <span class="spine-blurb">${txt(i.blurb)}</span>
           </li>`).join("")}
       </ul>`,
+
+    /* Character cards from SITE.characters. compact: round portraits that link to s.href. */
+    cast: s => {
+      const list = pick(CHARS, s.items);
+      if (s.compact) return `
+        <ul class="cast-row">
+          ${list.map(c => `<li><a href="${esc(s.href || "#/kids/characters")}">
+            <span class="cast-art">${ART.character(c.id, c.color)}</span>
+            <span class="cast-name">${esc(c.name)}</span>
+            ${c.isNew ? `<span class="pill pill-new">New</span>` : ""}
+          </a></li>`).join("")}
+        </ul>`;
+      return `
+        <div class="cast">
+          ${list.map(c => `
+            <article class="char">
+              <div class="char-art">${ART.character(c.id, c.color)}</div>
+              <div class="char-body">
+                <h3>${esc(c.name)} ${c.isNew ? `<span class="pill pill-new">New</span>` : ""}</h3>
+                <p class="char-kind">${esc(c.kind)}, ${c.isNew ? `arriving ${c.since}` : `since ${c.since}`}</p>
+                <p>${txt(c.blurb)}</p>
+                <ul class="tags">${(c.tags || []).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+                <a class="text-link" href="#/shop/${esc(c.id)}">Shop ${esc(c.name)} books</a>
+              </div>
+            </article>`).join("")}
+        </div>`;
+    },
 
     readAlong: s => {
       let offset = 0;
@@ -55,7 +128,6 @@
       }).join("");
       return `
         <div class="readalong" data-story="${esc(s.story)}">
-          ${s.intro ? `<p class="muted">${txt(s.intro)}</p>` : ""}
           <p class="story">${words}</p>
           <div class="ra-controls">
             <button class="btn btn-primary" data-ra="play">Play story</button>
@@ -72,27 +144,107 @@
         </div>`;
     },
 
+    /* Video, audio or YouTube. With no src, a poster photo (or a hatched slot) stands in. */
     media: s => {
       const src = s.src && !isTbd(s.src) ? s.src : "";
-      const body = !src
-        ? `<div class="frame-empty"><span>Media slot</span></div>`
-        : /\.(mp3|wav|m4a|ogg)$/i.test(src)
+      let body;
+      if (src) {
+        body = /\.(mp3|wav|m4a|ogg)$/i.test(src)
           ? `<audio controls src="${esc(src)}"></audio>`
           : /youtube\.com|youtu\.be/.test(src)
             ? `<iframe src="${esc(src)}" title="${esc(s.heading || "Video")}" allowfullscreen></iframe>`
-            : `<video controls src="${esc(src)}"></video>`;
+            : `<video controls src="${esc(src)}"${s.poster ? ` poster="${esc(SITE.photos[s.poster]?.src || "")}"` : ""}></video>`;
+      } else if (s.poster) {
+        body = `<button class="poster" data-toast="Demo only: the pilot video hasn't been uploaded yet.">
+          ${photo(s.poster)}
+          <span class="poster-copy">
+            <span class="poster-play" aria-hidden="true"></span>
+            <span class="poster-title">${txt(s.posterTitle || "")}</span>
+            ${s.posterSub ? `<span class="poster-sub">${txt(s.posterSub)}</span>` : ""}
+          </span>
+        </button>`;
+      } else {
+        body = `<div class="frame-empty"><span>Media slot</span></div>`;
+      }
       return `<figure class="media"><div class="frame">${body}</div>
         ${s.caption ? `<figcaption>${txt(s.caption)}</figcaption>` : ""}</figure>`;
     },
 
+    videos: s => `
+      <ul class="videos">
+        ${(s.items || []).map(v => {
+          const inner = `<span class="video-thumb">${ART.thumb(v)}<span class="video-time">${esc(v.duration)}</span></span>
+            <span class="video-title">${esc(v.title)}</span><span class="video-kind">${esc(v.kind)}</span>`;
+          return `<li>${v.href
+            ? `<a class="video" href="${esc(v.href)}">${inner}</a>`
+            : `<button class="video" data-toast="Demo only: episodes play on the Willow Tree Kids channel.">${inner}</button>`}</li>`;
+        }).join("")}
+      </ul>`,
+
+    /* Photo or art beside text, with optional host, points and actions. */
+    spotlight: s => `
+      <div class="spotlight${s.reverse ? " is-reverse" : ""}">
+        <div class="spot-visual${s.photo ? " is-photo" : ""}">${visual(s)}</div>
+        <div class="spot-copy">
+          ${s.text ? `<p class="spot-text">${txt(s.text)}</p>` : ""}
+          ${s.person ? `<div class="person">${ART.person(s.person.avatar)}<div><strong>${esc(s.person.name)}</strong><span>${esc(s.person.role)}</span></div></div>` : ""}
+          ${s.points ? `<ul class="points">${s.points.map(p => `<li>${txt(p)}</li>`).join("")}</ul>` : ""}
+          ${actions(s.actions)}
+        </div>
+      </div>`,
+
+    /* A promotional band. Uses its own title (h2) so it can sit without a section heading. */
+    banner: s => `
+      <div class="banner${s.photo || s.art ? "" : " is-plain"}">
+        <div class="banner-copy">
+          <h2>${txt(s.title)}</h2>
+          ${s.text ? `<p>${txt(s.text)}</p>` : ""}
+          ${actions(s.actions)}
+        </div>
+        ${s.photo || s.art ? `<div class="banner-visual${s.photo ? " is-photo" : ""}">${visual(s)}</div>` : ""}
+      </div>`,
+
+    /* Books from SITE.catalog. filters: genre and character chips. link: covers link there. */
+    books: s => {
+      const list = s.items === "all" ? CATALOG : pick(CATALOG, s.items);
+      const chips = s.filters ? `
+        <div class="chips" role="toolbar" aria-label="Filter books">
+          <button class="chip" data-filter="all" aria-pressed="true">All books</button>
+          ${(SITE.genres || []).map(g => `<button class="chip" data-filter="${esc(g.id)}" aria-pressed="false">${esc(g.label)}</button>`).join("")}
+        </div>
+        <p class="filter-status muted" role="status"></p>` : "";
+      return `${chips}
+        <ul class="books">
+          ${list.map(b => `
+            <li class="book" data-genre="${esc(b.genre)}" data-series="${esc(b.series || "")}">
+              ${link(s.link, `<span class="book-cover">${ART.cover(b)}</span>`, "book-cover-link") }
+              ${b.badge ? `<span class="pill">${esc(b.badge)}</span>` : ""}
+              <h3>${esc(b.title)}</h3>
+              <p class="book-meta">${esc(b.author)}<br>${esc(b.format)}, ${esc(b.age)}</p>
+              <div class="book-buy">
+                <span class="book-price">${money(b.price)}</span>
+                <button class="btn btn-small" data-add="${esc(b.id)}">${b.badge === "Pre-order" ? "Pre-order" : "Add to bag"}</button>
+              </div>
+            </li>`).join("")}
+        </ul>`;
+    },
+
     tiers: s => `
+      ${s.billing ? `<div class="billing" role="group" aria-label="Billing period">
+        <button class="chip" data-billing="monthly" aria-pressed="true">Pay as you go</button>
+        <button class="chip" data-billing="annual" aria-pressed="false">Pay yearly, save about 17%</button>
+      </div>` : ""}
       <div class="tiers">
         ${(s.items || []).map(i => `
           <article class="tier${i.featured ? " tier-featured" : ""}">
+            ${i.badge ? `<span class="pill">${esc(i.badge)}</span>` : ""}
             <h3>${txt(i.name)}</h3>
-            <p class="price">${txt(i.price)} <span>${txt(i.period)}</span></p>
+            ${i.desc ? `<p class="tier-desc">${txt(i.desc)}</p>` : ""}
+            <p class="price price-m">${txt(i.price)} <span>${txt(i.period)}</span></p>
+            <p class="price price-a">${txt(i.annual || i.price)} <span>${txt(i.annualPeriod || i.period)}</span></p>
             <ul>${(i.points || []).map(p => `<li>${txt(p)}</li>`).join("")}</ul>
-            <button class="btn${i.featured ? " btn-primary" : ""}" data-demo-cta>${txt(s.cta || "Choose")}</button>
+            ${i.save ? `<p class="tier-save">${txt(i.save)}</p>` : ""}
+            <button class="btn${i.featured ? " btn-primary" : ""}" data-toast="Demo only: checkout isn't connected.">${txt(s.cta || "Choose")}</button>
           </article>`).join("")}
       </div>`,
 
@@ -109,14 +261,40 @@
           <li><h3>${txt(i.title)}</h3><p>${txt(i.text)}</p></li>`).join("")}
       </ol>`,
 
+    timeline: s => `
+      <ol class="timeline">
+        ${(s.items || []).map(i => `<li><span class="year">${esc(i.year)}</span><p>${txt(i.text)}</p></li>`).join("")}
+      </ol>`,
+
+    logos: s => `
+      <ul class="logos">
+        ${pick(PARTNERS, s.items).map(p => `<li>${link(s.href, `${ART.logo(p)}<span class="logo-type">${esc(p.type)}</span>`, "logo-link")}</li>`).join("")}
+      </ul>`,
+
+    faq: s => `
+      <div class="faq">
+        ${(s.items || []).map(i => `<details><summary>${txt(i.q)}</summary><p>${txt(i.a)}</p></details>`).join("")}
+      </div>`,
+
+    subnav: s => `
+      <nav class="subnav" aria-label="On this page">
+        ${(s.items || []).map(i => `<a class="chip" href="${esc(i.href)}">${esc(i.label)}</a>`).join("")}
+      </nav>`,
+
+    credits: () => {
+      const photos = Object.values(SITE.photos || {});
+      return `
+        <h3>Made by</h3>
+        <p class="team-names">${(SITE.team || []).map(esc).join(", ")}</p>
+        <h3>Photos</h3>
+        <p class="muted">Hotlinked from Wikimedia Commons. Real people pictured have no connection to this project.</p>
+        <ul class="credit-list">
+          ${photos.map(p => `<li><strong>${esc(p.alt)}</strong><span>${esc(p.credit)}, ${esc(p.license)}, <a href="${esc(p.page)}" target="_blank" rel="noopener">source</a></span></li>`).join("")}
+        </ul>`;
+    },
+
     placeholder: s => `<div class="frame-empty frame-text"><span>${txt(s.text || "TBD")}</span></div>`
   };
-
-  function actions(list) {
-    if (!list || !list.length) return "";
-    return `<div class="actions">${list.map(a =>
-      `<a class="btn${a.primary ? " btn-primary" : ""}" href="${esc(a.href)}">${esc(a.label)}</a>`).join("")}</div>`;
-  }
 
   /* Hanging willow strands over an open book. Generated so it scales cleanly. */
   function willow() {
@@ -161,36 +339,119 @@
         <strong>${esc(s.note.pillar)}</strong>
         <span>${txt(s.note.text)}</span>
       </aside>` : "";
+    const more = s.more ? `<p class="more"><a href="${esc(s.more.href)}">${esc(s.more.label)}</a></p>` : "";
     return `<section class="block block-${esc(s.type)}${draft}" id="${esc(s.id || `s${idx}`)}">
-      ${s.heading ? `<h2>${txt(s.heading)}</h2>` : ""}${body}${note}</section>`;
+      ${s.heading ? `<h2>${txt(s.heading)}</h2>` : ""}
+      ${s.intro && s.type !== "credits" ? `<p class="section-intro">${txt(s.intro)}</p>` : ""}
+      ${s.type === "credits" && s.intro ? `<p class="lede">${txt(s.intro)}</p>` : ""}
+      ${body}${more}${note}</section>`;
   }
 
   const pageIds = SITE.nav.map(n => n.id);
-  const currentId = () => {
-    const id = location.hash.replace(/^#\/?/, "") || "home";
-    return SITE.pages[id] ? id : "home";
+  const route = () => {
+    const [id, sub] = location.hash.replace(/^#\/?/, "").split("/");
+    return SITE.pages[id] ? { id, sub } : { id: "home", sub: "" };
   };
+  let rendered = null;
 
   function render() {
-    const id = currentId();
-    const page = SITE.pages[id];
-    stopReading();
-    const main = $("#main");
-    main.innerHTML = page.sections.map(renderSection).join("");
-    document.title = `${page.title} · ${SITE.brand.name} demo`;
-    $$(".nav a").forEach(a => a.setAttribute("aria-current", a.dataset.id === id ? "page" : "false"));
-    $("#pager").textContent = `${pageIds.indexOf(id) + 1} / ${pageIds.length}`;
-    main.focus({ preventScroll: true });
-    window.scrollTo(0, 0);
-    wireReadAlong(main);
-    $$("[data-demo-cta]", main).forEach(b => b.addEventListener("click", () => toast("Demo only: checkout isn't connected.")));
+    const { id, sub } = route();
+    if (id !== rendered) {
+      const page = SITE.pages[id];
+      stopReading();
+      const main = $("#main");
+      main.innerHTML = page.sections.map(renderSection).join("");
+      document.title = `${page.title} · ${SITE.brand.name} demo`;
+      $$(".nav a").forEach(a => a.setAttribute("aria-current", a.dataset.id === id ? "page" : "false"));
+      const n = pageIds.indexOf(id);
+      $("#pager").textContent = n >= 0 ? `${n + 1} / ${pageIds.length}` : "";
+      main.focus({ preventScroll: true });
+      rendered = id;
+      wireReadAlong(main);
+      wireImages(main);
+      if (!sub) window.scrollTo(0, 0);
+    }
+    else if (!sub) { // same page, bare link: back to the top and clear any filter
+      if ($("[data-filter]")) applyFilter("all");
+      window.scrollTo(0, 0);
+    }
+    if (sub) goToSub(sub);
+  }
+
+  /* "#/shop/cookbooks" filters the shop; "#/kids/pilot" scrolls to that section. */
+  function goToSub(sub) {
+    const isFilter = $("[data-filter]") && (sub === "all" || (SITE.genres || []).some(g => g.id === sub) || CHARS.some(c => c.id === sub));
+    const target = isFilter ? $(".block-books .chips")?.closest(".block") : document.getElementById(sub);
+    if (isFilter) applyFilter(sub);
+    if (target) requestAnimationFrame(() => target.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
+  }
+
+  function applyFilter(key) {
+    const items = $$(".book[data-genre]", $(".chips")?.closest(".block") || document);
+    let shown = 0;
+    items.forEach(li => {
+      const on = key === "all" || li.dataset.genre === key || li.dataset.series === key;
+      li.hidden = !on;
+      if (on) shown++;
+    });
+    $$("[data-filter]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === key)));
+    const genre = (SITE.genres || []).find(g => g.id === key);
+    const char = CHARS.find(c => c.id === key);
+    const status = $(".filter-status");
+    if (status) status.textContent = key === "all" ? `${shown} books` : `${shown} ${shown === 1 ? "book" : "books"} in ${genre ? genre.label.toLowerCase() : char ? `the ${char.name} series` : key}`;
   }
 
   function buildChrome() {
     $("#brand").innerHTML = `<a href="#/home"><span class="brand-name">${esc(SITE.brand.name)}</span>
       <span class="brand-sub">${esc(SITE.brand.sub)}</span></a>`;
     $("#nav").innerHTML = SITE.nav.map(n => `<a href="#/${esc(n.id)}" data-id="${esc(n.id)}">${esc(n.label)}</a>`).join("");
-    $("#footer-text").textContent = SITE.brand.footer;
+    const team = SITE.team || [];
+    const names = team.length > 1 ? `${team.slice(0, -1).join(", ")} and ${team[team.length - 1]}` : team.join("");
+    $("#footer-text").innerHTML = `${names ? `<strong class="made-by">Made by ${esc(names)}.</strong> ` : ""}${esc(SITE.brand.footer)} <a href="#/credits">Credits</a>`;
+  }
+
+  /* ---------- images: swap in a labelled placeholder if a photo can't load ---------- */
+  function wireImages(scope) {
+    $$("img", scope).forEach(img => {
+      const fail = () => {
+        const div = document.createElement("div");
+        div.className = `img-fallback ${img.className}`;
+        div.innerHTML = `<span>${esc(img.alt)}</span>`;
+        img.replaceWith(div);
+      };
+      if (img.complete && img.naturalWidth === 0 && img.src) fail();
+      else img.addEventListener("error", fail, { once: true });
+    });
+  }
+
+  /* ---------- bag (in memory only) ---------- */
+  const bag = new Map();
+  const FREE_SHIP = 35;
+  function addToBag(id) {
+    bag.set(id, (bag.get(id) || 0) + 1);
+    updateBag();
+    toast(`Added ${BOOK[id].title} to your bag.`);
+  }
+  function updateBag() {
+    const count = [...bag.values()].reduce((a, b) => a + b, 0);
+    $("#bag-count").textContent = count;
+    $("#bag-toggle").setAttribute("aria-label", `Bag, ${count} ${count === 1 ? "item" : "items"}`);
+    const total = [...bag].reduce((sum, [id, q]) => sum + BOOK[id].price * q, 0);
+    const list = $("#bag-items");
+    list.innerHTML = bag.size ? [...bag].map(([id, q]) => {
+      const b = BOOK[id];
+      return `<li><span class="bag-cover">${ART.cover(b)}</span>
+        <span class="bag-info"><strong>${esc(b.title)}</strong><span>${esc(b.format)}, ${money(b.price)}</span>
+          <span class="qty"><button class="btn btn-small" data-qty="-1" data-id="${esc(id)}" aria-label="Remove one">−</button>
+          <span>${q}</span>
+          <button class="btn btn-small" data-qty="1" data-id="${esc(id)}" aria-label="Add one">+</button></span></span>
+        <span class="bag-line">${money(b.price * q)}</span></li>`;
+    }).join("") : `<li class="bag-empty">Your bag is empty. <a href="#/shop" data-close>Browse the shop</a> to add a book.</li>`;
+    $("#bag-total").textContent = money(total);
+    $("#bag-ship").textContent = !bag.size ? "" : total >= FREE_SHIP
+      ? "Free US shipping on this order."
+      : `Add ${money(FREE_SHIP - total)} more for free US shipping.`;
+    $("#bag-checkout").disabled = !bag.size;
   }
 
   /* ---------- presenter mode ---------- */
@@ -201,17 +462,42 @@
   }
 
   function go(delta) {
-    const i = pageIds.indexOf(currentId());
-    const next = pageIds[(i + delta + pageIds.length) % pageIds.length];
+    const i = pageIds.indexOf(route().id);
+    const next = pageIds[(Math.max(i, 0) + delta + pageIds.length) % pageIds.length];
     location.hash = `#/${next}`;
   }
 
   document.addEventListener("keydown", e => {
-    if (e.target.closest("input, select, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.closest("input, select, textarea, dialog") || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "p" || e.key === "P") setPresenting(!document.body.classList.contains("presenting"));
     else if (e.key === "ArrowRight") go(1);
     else if (e.key === "ArrowLeft") go(-1);
   });
+
+  /* One delegated click handler for every interactive component. */
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-add], [data-filter], [data-billing], [data-toast], [data-qty], [data-close], #bag-toggle, #bag-checkout");
+    if (!t) return;
+    if (t.dataset.add) addToBag(t.dataset.add);
+    else if (t.dataset.filter) {
+      const key = t.dataset.filter;
+      history.replaceState(null, "", `#/${route().id}${key === "all" ? "" : `/${key}`}`);
+      applyFilter(key);
+    } else if (t.dataset.billing) {
+      // One choice applies to every price on the page.
+      const annual = t.dataset.billing === "annual";
+      $$(".block-tiers").forEach(b => b.classList.toggle("is-annual", annual));
+      $$("[data-billing]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.billing === t.dataset.billing)));
+    } else if (t.dataset.qty) {
+      const q = (bag.get(t.dataset.id) || 0) + Number(t.dataset.qty);
+      q > 0 ? bag.set(t.dataset.id, q) : bag.delete(t.dataset.id);
+      updateBag();
+    } else if (t.hasAttribute("data-close")) $("#bag").close();
+    else if (t.id === "bag-toggle") $("#bag").showModal();
+    else if (t.id === "bag-checkout") toast("Demo only: checkout isn't connected.");
+    else if (t.dataset.toast) toast(t.dataset.toast);
+  });
+  $("#bag").addEventListener("click", e => { if (e.target === $("#bag")) $("#bag").close(); });
 
   /* ---------- read-along (Web Speech API, with timed fallback) ---------- */
   let ra = null; // { root, timer }
@@ -293,6 +579,7 @@
 
   /* ---------- boot ---------- */
   buildChrome();
+  updateBag();
   $("#present-toggle").addEventListener("click", () => setPresenting(!document.body.classList.contains("presenting")));
   window.addEventListener("hashchange", render);
   if ("speechSynthesis" in window) speechSynthesis.getVoices(); // warm up voice list
