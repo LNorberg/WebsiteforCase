@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Willow Tree demo</title>
+  <meta name="description" content="Concept prototype for the Bain x Prism Fall 2026 case competition.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Young+Serif&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div class="brand" id="brand"></div>
+      <nav class="nav" id="nav" aria-label="Main"></nav>
+      <button class="btn btn-small" id="present-toggle" aria-pressed="false" title="Shortcut: P">Presenter notes</button>
+    </div>
+  </header>
+
+  <main id="main" class="wrap" tabindex="-1"></main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <p id="footer-text"></p>
+      <p class="keys"><kbd>P</kbd> notes <kbd>←</kbd><kbd>→</kbd> pages <span id="pager"></span></p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/js/content.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
